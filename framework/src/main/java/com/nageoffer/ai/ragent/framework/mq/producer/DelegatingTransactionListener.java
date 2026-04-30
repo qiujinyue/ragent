@@ -54,6 +54,11 @@ public class DelegatingTransactionListener implements RocketMQLocalTransactionLi
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    /**
+     * 注册本地事务逻辑
+     * @param txId
+     * @param localTransaction
+     */
     public void registerLocalTransaction(String txId, Consumer<Object> localTransaction) {
         localTransactionMap.put(txId, localTransaction);
     }

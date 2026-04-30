@@ -67,7 +67,7 @@ public class RocketMQProducerAdapter implements MessageQueueProducer {
                                   Consumer<Object> localTransaction) {
         keys = StrUtil.isEmpty(keys) ? UUID.randomUUID().toString() : keys;
         String txId = UUID.randomUUID().toString();
-
+        // 注册本地事务
         transactionListener.registerLocalTransaction(txId, localTransaction);
 
         Message<MessageWrapper<Object>> message = MessageBuilder
@@ -79,6 +79,7 @@ public class RocketMQProducerAdapter implements MessageQueueProducer {
 
         TransactionSendResult sendResult;
         try {
+            // 发送half消息
             sendResult = rocketMQTemplate.sendMessageInTransaction(topic, message, null);
         } catch (Throwable ex) {
             log.error("[生产者] {} - 事务消息发送失败，topic: {}, keys: {}", bizDesc, topic, keys, ex);

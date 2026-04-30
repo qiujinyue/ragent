@@ -52,6 +52,7 @@ public class RAGChatController {
                            @RequestParam(required = false) String conversationId,
                            @RequestParam(required = false, defaultValue = "false") Boolean deepThinking) {
         SseEmitter emitter = new SseEmitter(ragDefaultProperties.getSseTimeoutMs());
+        //TODO: 流式对话
         ragChatService.streamChat(question, conversationId, deepThinking, emitter);
         return emitter;
     }

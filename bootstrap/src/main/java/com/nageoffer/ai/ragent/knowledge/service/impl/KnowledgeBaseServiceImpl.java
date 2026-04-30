@@ -66,6 +66,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Transactional
     @Override
     public String create(KnowledgeBaseCreateRequest requestParam) {
+        // TODO: 创建知识库并且创建rustfs存储桶
         // 名称重复校验
         String name = requestParam.getName().replaceAll("\\s+", "");
         Long count = knowledgeBaseMapper.selectCount(
@@ -228,8 +229,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                                 .groupBy("kb_id")
                 );
                 for (Map<String, Object> row : rows) {
-                    Object kbIdValue = row.get("kbId");
-                    Object countValue = row.get("docCount");
+                    Object kbIdValue = row.get("kbid");
+                    Object countValue = row.get("doccount");
                     if (kbIdValue == null) {
                         continue;
                     }
