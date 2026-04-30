@@ -57,6 +57,7 @@ public class S3FileStorageService implements FileStorageService {
     @Override
     @SneakyThrows
     public StoredFileDTO upload(String bucketName, MultipartFile file) {
+        // TODO: 上传文件核心接口
         validateBucketName(bucketName);
         Assert.isFalse(file == null || file.isEmpty(), "上传文件不能为空");
 
@@ -172,6 +173,7 @@ public class S3FileStorageService implements FileStorageService {
                                           InputStream inputStream,
                                           long size,
                                           String contentType) throws IOException {
+        // TODO: 流式上传
         HttpURLConnection conn = (HttpURLConnection) presignedReq.url().openConnection();
         try {
             conn.setDoOutput(true);

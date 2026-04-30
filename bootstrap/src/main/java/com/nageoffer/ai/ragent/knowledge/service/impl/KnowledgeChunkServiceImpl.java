@@ -92,11 +92,15 @@ public class KnowledgeChunkServiceImpl implements KnowledgeChunkService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KnowledgeChunkVO create(String docId, KnowledgeChunkCreateRequest requestParam) {
+        // ========== 前置校验 ==========
+        // 1. 检查文档是否存在
         KnowledgeDocumentDO documentDO = documentMapper.selectById(docId);
         Assert.notNull(documentDO, () -> new ClientException("文档不存在"));
+        // 2. 文档正在处理中不允许新增
         if (DocumentStatus.RUNNING.getCode().equals(documentDO.getStatus())) {
             throw new ClientException("文档正在分块处理中，暂不支持新增 Chunk");
         }
+        // 3. 未启用的文档不允许新增
         if (!Integer.valueOf(1).equals(documentDO.getEnabled())) {
             throw new ClientException("文档未启用，暂不支持新增 Chunk");
         }
@@ -104,16 +108,20 @@ public class KnowledgeChunkServiceImpl implements KnowledgeChunkService {
         String content = requestParam.getContent();
         Assert.notBlank(content, () -> new ClientException("Chunk 内容不能为空"));
 
+        // ========== 确定 Chunk 索引 ==========
+        // 查询该文档下当前最大的 chunkIndex
         KnowledgeChunkDO latest = chunkMapper.selectOne(
                 Wrappers.lambdaQuery(KnowledgeChunkDO.class)
                         .eq(KnowledgeChunkDO::getDocId, docId)
                         .orderByDesc(KnowledgeChunkDO::getChunkIndex)
                         .last("LIMIT 1")
         );
+        // 如果请求指定了索引就用指定的，否则用最新的 +1
         int chunkIndex = requestParam.getIndex() != null
                 ? requestParam.getIndex()
                 : (latest != null ? latest.getChunkIndex() + 1 : 0);
 
+        // ========== 构建 Chunk 对象 ==========
         String contentHash = SecureUtil.sha256(content);
         int charCount = content.length();
         KnowledgeBaseDO kbDO = knowledgeBaseMapper.selectById(documentDO.getKbId());
@@ -135,14 +143,17 @@ public class KnowledgeChunkServiceImpl implements KnowledgeChunkService {
                 .updatedBy(UserContext.getUsername())
                 .build();
 
+        // ========== 写入数据库 ==========
         chunkMapper.insert(chunkDO);
         log.info("新增 Chunk 成功, kbId={}, docId={}, chunkId={}, chunkIndex={}", documentDO.getKbId(), docId, chunkDO.getId(), chunkIndex);
 
+        // ========== 更新文档的 chunk 计数 ==========
         documentMapper.update(Wrappers.lambdaUpdate(KnowledgeDocumentDO.class)
                 .eq(KnowledgeDocumentDO::getId, docId)
                 .setSql("chunk_count = chunk_count + 1"));
 
-        // 同步写入向量库
+        // ========== 同步向量库 ==========
+        // 将新 Chunk 的向量嵌入写入向量数据库
         syncChunkToVector(collectionName, docId, chunkDO, embeddingModel);
 
         return BeanUtil.toBean(chunkDO, KnowledgeChunkVO.class);
