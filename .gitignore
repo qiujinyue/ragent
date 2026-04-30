@@ -4,6 +4,15 @@ temp
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### configuration
+.env
+
+
+
+
+### claude
+CLAUDE.md
+
 ### STS ###
 .apt_generated
 .classpath
