@@ -513,22 +513,22 @@ export function AdminLayout() {
                     });
                   }
 
-                      return (
-                        <div key={item.label} className="space-y-1">
-                          <button
-                            type="button"
-                            onClick={() => setOpenGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }))}
-                            className={cn(
-                              "admin-sidebar__item admin-sidebar__item--group w-full text-white/60",
-                              isGroupActive && "admin-sidebar__item--group-active text-white"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "admin-sidebar__item-indicator",
-                                isGroupActive && "is-group-active"
-                              )}
-                            />
+                  return (
+                    <div key={item.label} className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => setOpenGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }))}
+                        className={cn(
+                          "admin-sidebar__item admin-sidebar__item--group w-full text-white/60",
+                          isGroupActive && "admin-sidebar__item--group-active text-white"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "admin-sidebar__item-indicator",
+                            isGroupActive && "is-group-active"
+                          )}
+                        />
                         <item.icon className="admin-sidebar__item-icon" />
                         <span className="flex-1 text-left">{item.label}</span>
                         {isOpen ? (
@@ -688,7 +688,7 @@ export function AdminLayout() {
                 <MessageSquare className="h-4 w-4" />
                 返回聊天
               </Button>
-              <a
+              {/* <a
                 href="https://github.com/nageoffer/ragent"
                 target="_blank"
                 rel="noreferrer"
@@ -700,7 +700,7 @@ export function AdminLayout() {
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                   {starLabel}
                 </span>
-              </a>
+              </a> */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

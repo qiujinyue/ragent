@@ -60,7 +60,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             {currentSession?.title || "新对话"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <a
             href="https://github.com/nageoffer/ragent"
             target="_blank"
@@ -74,7 +74,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               {starLabel}
             </span>
           </a>
-        </div>
+        </div> */}
       </div>
     </header>
   );
