@@ -89,6 +89,11 @@ public class IntentResolver {
                 && nodeScores.get(0).getNode().getKind() == SYSTEM;
     }
 
+    /**
+     * 对所有叶子分类节点做意图识别，并按照分数和个数过滤
+     * @param question 用户问题/改写后的问题
+     * @return
+     */
     private List<NodeScore> classifyIntents(String question) {
         List<NodeScore> scores = intentClassifier.classifyTargets(question);
         return scores.stream()

@@ -100,7 +100,7 @@ public class ChatRateLimitAspect {
                 .startTime(new Date())
                 .extraData(StrUtil.format("{\"questionLength\":{}}", StrUtil.length(question)))
                 .build());
-
+        // TODO: 链路根节点，使用阿里的ttl实现链路根节点的传递
         RagTraceContext.setTraceId(traceId);
         RagTraceContext.setTaskId(taskId);
         try {

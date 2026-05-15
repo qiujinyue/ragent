@@ -89,6 +89,7 @@ public class RetrievalEngine {
                 .map(si -> CompletableFuture.supplyAsync(
                         () -> {
                             try {
+                                // TODO: 子问题检索
                                 return buildSubQuestionContext(
                                         si,
                                         resolveSubQuestionTopK(si, finalTopK)
@@ -178,6 +179,7 @@ public class RetrievalEngine {
     private KbResult retrieveAndRerank(SubQuestionIntent intent, List<NodeScore> kbIntents, int topK) {
         // 使用多通道检索引擎（是否启用全局检索由置信度阈值决定）
         List<SubQuestionIntent> subIntents = List.of(intent);
+        // TODO： 知识库检索
         List<RetrievedChunk> chunks = multiChannelRetrievalEngine.retrieveKnowledgeChannels(subIntents, topK);
 
         if (CollUtil.isEmpty(chunks)) {
