@@ -19,36 +19,37 @@ package com.nageoffer.ai.ragent.rag.core.retrieve;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.nageoffer.ai.ragent.rag.dto.KbResult;
-import com.nageoffer.ai.ragent.rag.dto.RetrievalContext;
-import com.nageoffer.ai.ragent.rag.dto.SubQuestionIntent;
 import com.nageoffer.ai.ragent.framework.convention.RetrievedChunk;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
+import com.nageoffer.ai.ragent.rag.config.SearchChannelProperties;
 import com.nageoffer.ai.ragent.rag.core.intent.IntentNode;
 import com.nageoffer.ai.ragent.rag.core.intent.NodeScore;
 import com.nageoffer.ai.ragent.rag.core.intent.NodeScoreFilters;
-import com.nageoffer.ai.ragent.rag.core.mcp.MCPParameterExtractor;
-import com.nageoffer.ai.ragent.rag.core.mcp.MCPRequest;
-import com.nageoffer.ai.ragent.rag.core.mcp.MCPResponse;
-import com.nageoffer.ai.ragent.rag.core.mcp.MCPTool;
-import com.nageoffer.ai.ragent.rag.core.mcp.MCPToolExecutor;
-import com.nageoffer.ai.ragent.rag.core.mcp.MCPToolRegistry;
+import com.nageoffer.ai.ragent.rag.core.mcp.McpParameterExtractor;
+import com.nageoffer.ai.ragent.rag.core.mcp.McpToolExecutor;
+import com.nageoffer.ai.ragent.rag.core.mcp.McpToolRegistry;
 import com.nageoffer.ai.ragent.rag.core.prompt.ContextFormatter;
+import com.nageoffer.ai.ragent.rag.core.prompt.PromptTemplateLoader;
+import com.nageoffer.ai.ragent.rag.dto.KbResult;
+import com.nageoffer.ai.ragent.rag.dto.RetrievalContext;
+import com.nageoffer.ai.ragent.rag.dto.SubQuestionIntent;
+import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import io.modelcontextprotocol.spec.McpSchema.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
-import static com.nageoffer.ai.ragent.rag.constant.RAGConstant.DEFAULT_TOP_K;
+import static com.nageoffer.ai.ragent.rag.constant.RAGConstant.CONTEXT_FORMAT_PATH;
 import static com.nageoffer.ai.ragent.rag.constant.RAGConstant.MULTI_CHANNEL_KEY;
 
 /**
@@ -60,13 +61,13 @@ import static com.nageoffer.ai.ragent.rag.constant.RAGConstant.MULTI_CHANNEL_KEY
 @RequiredArgsConstructor
 public class RetrievalEngine {
 
+    private final SearchChannelProperties searchProperties;
     private final ContextFormatter contextFormatter;
-    private final MCPParameterExtractor mcpParameterExtractor;
-    private final MCPToolRegistry mcpToolRegistry;
+    private final PromptTemplateLoader templateLoader;
+    private final McpParameterExtractor mcpParameterExtractor;
+    private final McpToolRegistry mcpToolRegistry;
     private final MultiChannelRetrievalEngine multiChannelRetrievalEngine;
-    @Qualifier("ragContextThreadPoolExecutor")
     private final Executor ragContextExecutor;
-    @Qualifier("mcpBatchThreadPoolExecutor")
     private final Executor mcpBatchExecutor;
 
     /**
@@ -80,7 +81,7 @@ public class RetrievalEngine {
                     .build();
         }
 
-        int finalTopK = topK > 0 ? topK : DEFAULT_TOP_K;
+        int finalTopK = topK > 0 ? topK : searchProperties.getDefaultTopK();
         List<CompletableFuture<SubQuestionContext>> tasks = subIntents.stream()
                 .map(si -> CompletableFuture.supplyAsync(
                         () -> {
@@ -101,25 +102,45 @@ public class RetrievalEngine {
                 .map(CompletableFuture::join)
                 .toList();
 
-        StringBuilder kbBuilder = new StringBuilder();
-        StringBuilder mcpBuilder = new StringBuilder();
         Map<String, List<RetrievedChunk>> mergedIntentChunks = new HashMap<>();
-
         for (SubQuestionContext context : contexts) {
-            if (StrUtil.isNotBlank(context.kbContext())) {
-                appendSection(kbBuilder, context.question(), context.kbContext());
-            }
-            if (StrUtil.isNotBlank(context.mcpContext())) {
-                appendSection(mcpBuilder, context.question(), context.mcpContext());
-            }
             if (CollUtil.isNotEmpty(context.intentChunks())) {
                 mergedIntentChunks.putAll(context.intentChunks());
             }
         }
 
+        boolean singleQuestion = contexts.size() == 1;
+        String kbContext;
+        String mcpContext;
+
+        if (singleQuestion) {
+            SubQuestionContext only = contexts.get(0);
+            kbContext = StrUtil.emptyIfNull(only.kbContext()).trim();
+            mcpContext = StrUtil.emptyIfNull(only.mcpContext()).trim();
+        } else {
+            StringBuilder kbBuilder = new StringBuilder();
+            StringBuilder mcpBuilder = new StringBuilder();
+            int globalIndex = 0;
+            for (SubQuestionContext context : contexts) {
+                boolean hasKb = StrUtil.isNotBlank(context.kbContext());
+                boolean hasMcp = StrUtil.isNotBlank(context.mcpContext());
+                if (hasKb || hasMcp) {
+                    globalIndex++;
+                }
+                if (hasKb) {
+                    appendSection(kbBuilder, "sub-question-kb-wrapper", globalIndex, context.question(), context.kbContext());
+                }
+                if (hasMcp) {
+                    appendSection(mcpBuilder, "sub-question-mcp-wrapper", globalIndex, context.question(), context.mcpContext());
+                }
+            }
+            kbContext = kbBuilder.toString().trim();
+            mcpContext = mcpBuilder.toString().trim();
+        }
+
         return RetrievalContext.builder()
-                .mcpContext(mcpBuilder.toString().trim())
-                .kbContext(kbBuilder.toString().trim())
+                .mcpContext(mcpContext)
+                .kbContext(kbContext)
                 .intentChunks(mergedIntentChunks)
                 .build();
     }
@@ -151,11 +172,15 @@ public class RetrievalEngine {
                 .orElse(fallbackTopK);
     }
 
-    private void appendSection(StringBuilder builder, String question, String context) {
-        builder.append("---\n")
-                .append("**子问题**：").append(question).append("\n\n")
-                .append("**相关文档**：\n")
-                .append(context).append("\n\n");
+    private void appendSection(StringBuilder builder, String section, int index, String question, String context) {
+        if (!builder.isEmpty()) {
+            builder.append("\n");
+        }
+        builder.append(templateLoader.renderSection(CONTEXT_FORMAT_PATH, section, Map.of(
+                "index", String.valueOf(index),
+                "question", question,
+                "context", context
+        )));
     }
 
     private String executeMcpAndMerge(String question, List<NodeScore> mcpIntents) {
@@ -163,12 +188,12 @@ public class RetrievalEngine {
             return "";
         }
 
-        List<MCPResponse> responses = executeMcpTools(question, mcpIntents);
-        if (responses.isEmpty() || responses.stream().noneMatch(MCPResponse::isSuccess)) {
+        Map<String, List<CallToolResult>> toolResults = executeMcpTools(question, mcpIntents);
+        if (toolResults.isEmpty()) {
             return "";
         }
 
-        return contextFormatter.formatMcpContext(responses, mcpIntents);
+        return contextFormatter.formatMcpContext(toolResults, mcpIntents);
     }
 
     private KbResult retrieveAndRerank(SubQuestionIntent intent, List<NodeScore> kbIntents, int topK) {
@@ -200,21 +225,28 @@ public class RetrievalEngine {
         return new KbResult(groupedContext, intentChunks);
     }
 
-    private List<MCPResponse> executeMcpTools(String question, List<NodeScore> mcpIntentScores) {
+    /**
+     * 执行 MCP 工具调用，返回按 toolId 分组的结果
+     */
+    private Map<String, List<CallToolResult>> executeMcpTools(String question,
+                                                              List<NodeScore> mcpIntentScores) {
         if (CollUtil.isEmpty(mcpIntentScores)) {
-            return List.of();
+            return Map.of();
         }
 
-        List<CompletableFuture<MCPResponse>> futures = mcpIntentScores.stream()
+        List<CompletableFuture<ToolOutput>> futures = mcpIntentScores.stream()
                 .map(ns -> CompletableFuture.supplyAsync(
                         () -> {
+                            String toolId = ns.getNode().getMcpToolId();
                             try {
-                                MCPRequest request = buildMcpRequest(question, ns.getNode());
-                                return request == null ? null : executeSingleMcpTool(request);
+                                CallToolResult result = executeSingleMcpTool(question, ns.getNode());
+                                return result == null ? null : new ToolOutput(toolId, result);
                             } catch (Exception e) {
-                                String toolId = ns.getNode().getMcpToolId();
                                 log.error("MCP 工具调用异常, toolId: {}", toolId, e);
-                                return MCPResponse.error(toolId, "EXECUTION_ERROR", "工具调用异常: " + e.getMessage());
+                                return new ToolOutput(toolId, CallToolResult.builder()
+                                        .content(List.of(new TextContent("工具调用异常: " + e.getMessage())))
+                                        .isError(true)
+                                        .build());
                             }
                         },
                         mcpBatchExecutor
@@ -224,43 +256,30 @@ public class RetrievalEngine {
         return futures.stream()
                 .map(CompletableFuture::join)
                 .filter(Objects::nonNull)
-                .toList();
+                .collect(Collectors.groupingBy(
+                        ToolOutput::toolId,
+                        Collectors.mapping(ToolOutput::result, Collectors.toList())
+                ));
     }
 
-    private MCPResponse executeSingleMcpTool(MCPRequest request) {
-        String toolId = request.getToolId();
-        Optional<MCPToolExecutor> executorOpt = mcpToolRegistry.getExecutor(toolId);
-        if (executorOpt.isEmpty()) {
-            log.warn("MCP 工具执行失败, 工具不存在: {}", toolId);
-            return MCPResponse.error(toolId, "TOOL_NOT_FOUND", "工具不存在: " + toolId);
-        }
-
-        try {
-            return executorOpt.get().execute(request);
-        } catch (Exception e) {
-            log.error("MCP 工具执行异常, toolId: {}", toolId, e);
-            return MCPResponse.error(toolId, "EXECUTION_ERROR", "工具调用异常: " + e.getMessage());
-        }
-    }
-
-    private MCPRequest buildMcpRequest(String question, IntentNode intentNode) {
+    private CallToolResult executeSingleMcpTool(String question, IntentNode intentNode) {
         String toolId = intentNode.getMcpToolId();
-        Optional<MCPToolExecutor> executorOpt = mcpToolRegistry.getExecutor(toolId);
+        Optional<McpToolExecutor> executorOpt = mcpToolRegistry.getExecutor(toolId);
         if (executorOpt.isEmpty()) {
             log.warn("MCP 工具不存在: {}", toolId);
             return null;
         }
 
-        MCPTool tool = executorOpt.get().getToolDefinition();
+        McpToolExecutor executor = executorOpt.get();
+        Tool tool = executor.getToolDefinition();
 
         String customParamPrompt = intentNode.getParamPromptTemplate();
         Map<String, Object> params = mcpParameterExtractor.extractParameters(question, tool, customParamPrompt);
 
-        return MCPRequest.builder()
-                .toolId(toolId)
-                .userQuestion(question)
-                .parameters(params != null ? params : new HashMap<>())
-                .build();
+        return executor.execute(params != null ? params : new HashMap<>());
+    }
+
+    private record ToolOutput(String toolId, CallToolResult result) {
     }
 
     private record SubQuestionContext(String question,

@@ -30,6 +30,11 @@ import org.springframework.stereotype.Component;
 public class SearchChannelProperties {
 
     /**
+     * 默认返回的 TopK
+     */
+    private int defaultTopK = 10;
+
+    /**
      * 检索通道配置
      */
     private Channels channels = new Channels();
