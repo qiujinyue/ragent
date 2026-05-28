@@ -17,30 +17,24 @@
 
 package com.nageoffer.ai.ragent.infra.chat;
 
-import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
-import com.nageoffer.ai.ragent.infra.enums.ModelProvider;
-import com.nageoffer.ai.ragent.infra.model.ModelTarget;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Slf4j
-@Service
-public class SiliconFlowChatClient extends AbstractOpenAIStyleChatClient {
+import java.util.concurrent.TimeUnit;
 
-    @Override
-    public String provider() {
-        return ModelProvider.SILICON_FLOW.getId();
-    }
+/**
+ * 把 awaitFirstPacket 拆为独立 bean，便于 AOP 采集 TTFT trace
+ * <p>
+ * Spring AOP 不拦截类内 self-call，因此 RoutingLLMService 必须依赖外部 bean
+ * 调用此方法，{@code @RagTraceNode} 才会生效
+ */
+@Component
+public class LlmFirstPacketProbe {
 
-    @Override
-    @RagTraceNode(name = "siliconflow-chat", type = "LLM_PROVIDER")
-    public String chat(ChatRequest request, ModelTarget target) {
-        return doChat(request, target);
-    }
-
-    @Override
-    public StreamCancellationHandle streamChat(ChatRequest request, StreamCallback callback, ModelTarget target) {
-        return doStreamChat(request, callback, target);
+    @RagTraceNode(name = "llm-first-packet", type = "LLM_TTFT")
+    public ProbeStreamBridge.ProbeResult awaitFirstPacket(ProbeStreamBridge bridge,
+                                                          long timeout,
+                                                          TimeUnit unit) throws InterruptedException {
+        return bridge.awaitFirstPacket(timeout, unit);
     }
 }

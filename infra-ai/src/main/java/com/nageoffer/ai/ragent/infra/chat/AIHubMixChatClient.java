@@ -26,15 +26,15 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-public class SiliconFlowChatClient extends AbstractOpenAIStyleChatClient {
+public class AIHubMixChatClient extends AbstractOpenAIStyleChatClient {
 
     @Override
     public String provider() {
-        return ModelProvider.SILICON_FLOW.getId();
+        return ModelProvider.AI_HUB_MIX.getId();
     }
 
     @Override
-    @RagTraceNode(name = "siliconflow-chat", type = "LLM_PROVIDER")
+    @RagTraceNode(name = "aihubmix-chat", type = "LLM_PROVIDER")
     public String chat(ChatRequest request, ModelTarget target) {
         return doChat(request, target);
     }

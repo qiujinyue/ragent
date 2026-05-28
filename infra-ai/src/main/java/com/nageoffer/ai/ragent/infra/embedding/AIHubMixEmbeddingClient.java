@@ -15,32 +15,26 @@
  * limitations under the License.
  */
 
-package com.nageoffer.ai.ragent.infra.chat;
+package com.nageoffer.ai.ragent.infra.embedding;
 
-import com.nageoffer.ai.ragent.framework.convention.ChatRequest;
-import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.enums.ModelProvider;
-import com.nageoffer.ai.ragent.infra.model.ModelTarget;
-import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
 import org.springframework.stereotype.Service;
 
-@Slf4j
 @Service
-public class SiliconFlowChatClient extends AbstractOpenAIStyleChatClient {
+public class AIHubMixEmbeddingClient extends AbstractOpenAIStyleEmbeddingClient {
+
+    public AIHubMixEmbeddingClient(OkHttpClient syncHttpClient) {
+        super(syncHttpClient);
+    }
 
     @Override
     public String provider() {
-        return ModelProvider.SILICON_FLOW.getId();
+        return ModelProvider.AI_HUB_MIX.getId();
     }
 
     @Override
-    @RagTraceNode(name = "siliconflow-chat", type = "LLM_PROVIDER")
-    public String chat(ChatRequest request, ModelTarget target) {
-        return doChat(request, target);
-    }
-
-    @Override
-    public StreamCancellationHandle streamChat(ChatRequest request, StreamCallback callback, ModelTarget target) {
-        return doStreamChat(request, callback, target);
+    protected int maxBatchSize() {
+        return 32;
     }
 }

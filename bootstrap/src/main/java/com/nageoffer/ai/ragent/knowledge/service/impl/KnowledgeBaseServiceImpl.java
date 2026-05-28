@@ -66,7 +66,6 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Transactional
     @Override
     public String create(KnowledgeBaseCreateRequest requestParam) {
-        // TODO: 创建知识库并且创建rustfs存储桶
         // 名称重复校验
         String name = requestParam.getName().replaceAll("\\s+", "");
         Long count = knowledgeBaseMapper.selectCount(
@@ -223,25 +222,18 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             if (!kbIds.isEmpty()) {
                 List<Map<String, Object>> rows = knowledgeDocumentMapper.selectMaps(
                         Wrappers.query(KnowledgeDocumentDO.class)
-                                .select("kb_id AS kbId", "COUNT(1) AS docCount")
+                                .select("kb_id", "COUNT(1) AS doc_count")
                                 .in("kb_id", kbIds)
                                 .eq("deleted", 0)
                                 .groupBy("kb_id")
                 );
                 for (Map<String, Object> row : rows) {
-                    Object kbIdValue = row.get("kbid");
-                    Object countValue = row.get("doccount");
-                    if (kbIdValue == null) {
+                    Object kbIdValue = row.get("kb_id");
+                    Object countValue = row.get("doc_count");
+                    if (kbIdValue == null || countValue == null) {
                         continue;
                     }
-
-                    String kbId = kbIdValue instanceof Number
-                            ? String.valueOf(((Number) kbIdValue).longValue())
-                            : kbIdValue.toString();
-                    Long count = countValue instanceof Number
-                            ? ((Number) countValue).longValue()
-                            : countValue != null ? Long.parseLong(countValue.toString()) : 0L;
-                    docCountMap.put(kbId, count);
+                    docCountMap.put(kbIdValue.toString(), ((Number) countValue).longValue());
                 }
             }
         }

@@ -194,7 +194,7 @@ RAG 项目的核心竞争力不在于你用了多强的模型，而在于工程�
 
 > 实际项目代码中，逻辑比图表上更加复杂。下图仅展示核心流程，落地过程中还涉及很多细节和优化。
 
-![](assets/ragent-chain-v2.png)
+![](assets/ragent-chain-v3.png)
 
 <details>
 <summary><b>多路检索架构、模型路由与容错等</b>（点击展开）</summary>
@@ -207,9 +207,11 @@ RAG 项目的核心竞争力不在于你用了多强的模型，而在于工程�
 
 生产环境不可能只依赖一个模型供应商，Ragent 的模型路由机制解决的就是这个问题：
 
-![](assets/model-routing-failover.png)
+![](assets/model-routing-failover.svg)
 
-关键设计：首包探测阶段会缓冲所有事件，确保模型切换时用户端不会收到半截的脏数据。
+关键设计：三态熔断器，用于保护系统不会持续调用已经故障的模型。
+
+![](assets/model-health-store.svg)
 
 文档从上传到可检索，经过一条基于节点编排的 Pipeline：
 
