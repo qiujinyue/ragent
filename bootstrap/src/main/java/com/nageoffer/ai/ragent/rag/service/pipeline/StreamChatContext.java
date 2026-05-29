@@ -22,59 +22,35 @@ import com.nageoffer.ai.ragent.infra.chat.StreamCallback;
 import com.nageoffer.ai.ragent.rag.core.rewrite.RewriteResult;
 import com.nageoffer.ai.ragent.rag.dto.SubQuestionIntent;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
 /**
  * 流式对话上下文
  */
-@Data
+@Getter
 @Builder
 public class StreamChatContext {
 
-    /**
-     * 原始问题
-     */
+    // ==================== 不可变输入参数 ====================
+
     private final String question;
-
-    /**
-     * 会话ID
-     */
     private final String conversationId;
-
-    /**
-     * 任务ID
-     */
     private final String taskId;
-
-    /**
-     * 是否启用深度思考
-     */
     private final boolean deepThinking;
-
-    /**
-     * 用户ID
-     */
     private final String userId;
-
-    /**
-     * 流式回调（用于输出给前端）
-     */
     private final StreamCallback callback;
 
-    /**
-     * 对话历史（过程中填充）
-     */
+    // ==================== 管道中填充的中间状态 ====================
+
+    @Setter
     private List<ChatMessage> history;
 
-    /**
-     * 查询改写结果（过程中填充）
-     */
+    @Setter
     private RewriteResult rewriteResult;
 
-    /**
-     * 子问题意图列表（过程中填充）
-     */
+    @Setter
     private List<SubQuestionIntent> subIntents;
 }

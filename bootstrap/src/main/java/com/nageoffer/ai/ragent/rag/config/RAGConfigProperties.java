@@ -19,7 +19,6 @@ package com.nageoffer.ai.ragent.rag.config;
 
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -39,7 +38,6 @@ import org.springframework.context.annotation.Configuration;
  */
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "rag.query-rewrite")
 public class RAGConfigProperties {
 
     /**
@@ -48,15 +46,6 @@ public class RAGConfigProperties {
      * 控制是否启用查询重写功能，查询重写可以将用户的查询语句优化为更适合检索的形式
      * 默认值：{@code true}
      */
-    private Boolean queryRewriteEnabled=true;
-
-    /**
-     * 改写时用于承接上下文的最大历史消息数
-     */
-    private Integer queryRewriteMaxHistoryMessages=4;
-
-    /**
-     * 改写时用于承接上下文的最大字符数
-     */
-    private Integer queryRewriteMaxHistoryChars=500;
+    @Value("${rag.query-rewrite.enabled:true}")
+    private Boolean queryRewriteEnabled;
 }

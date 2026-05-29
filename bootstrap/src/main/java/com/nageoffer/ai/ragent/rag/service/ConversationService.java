@@ -17,9 +17,9 @@
 
 package com.nageoffer.ai.ragent.rag.service;
 
-import com.nageoffer.ai.ragent.rag.controller.request.ConversationCreateRequest;
 import com.nageoffer.ai.ragent.rag.controller.request.ConversationUpdateRequest;
 import com.nageoffer.ai.ragent.rag.controller.vo.ConversationVO;
+import com.nageoffer.ai.ragent.rag.service.bo.ConversationCreateBO;
 
 import java.util.List;
 
@@ -39,11 +39,11 @@ public interface ConversationService {
 
     /**
      * 创建或更新会话
-     * 如果 ConversationCreateRequest 里的会话 ID 存在则更新，不存在则创建
+     * 如果 ConversationCreateBO 里的会话 ID 存在则更新，不存在则创建
      *
      * @param request 创建请求对象
      */
-    void createOrUpdate(ConversationCreateRequest request);
+    void createOrUpdate(ConversationCreateBO request);
 
     /**
      * 重命名会话

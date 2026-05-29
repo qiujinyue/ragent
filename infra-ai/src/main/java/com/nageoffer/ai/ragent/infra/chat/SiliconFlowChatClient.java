@@ -22,18 +22,11 @@ import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
 import com.nageoffer.ai.ragent.infra.enums.ModelProvider;
 import com.nageoffer.ai.ragent.infra.model.ModelTarget;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.Executor;
 
 @Slf4j
 @Service
 public class SiliconFlowChatClient extends AbstractOpenAIStyleChatClient {
-
-    public SiliconFlowChatClient(OkHttpClient httpClient, Executor modelStreamExecutor) {
-        super(httpClient, modelStreamExecutor);
-    }
 
     @Override
     public String provider() {
@@ -47,7 +40,6 @@ public class SiliconFlowChatClient extends AbstractOpenAIStyleChatClient {
     }
 
     @Override
-    @RagTraceNode(name = "siliconflow-stream-chat", type = "LLM_PROVIDER")
     public StreamCancellationHandle streamChat(ChatRequest request, StreamCallback callback, ModelTarget target) {
         return doStreamChat(request, callback, target);
     }

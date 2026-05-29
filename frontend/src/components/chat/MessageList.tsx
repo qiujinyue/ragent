@@ -158,6 +158,25 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
     });
   }, [isStreaming, isLoading, scrollToBottom, stickToBottom]);
 
+  // Intercept triple-click at mousedown phase to prevent browser from
+  // extending paragraph selection across sibling message boundaries.
+  // preventDefault() stops the default selection, then we manually select
+  // only the clicked block-level element's contents.
+  const handleTripleClickDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.detail < 3) return;
+    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const block = target.closest("p, li, h1, h2, h3, h4, h5, h6, pre, blockquote, td, th");
+    const container = block && e.currentTarget.contains(block) ? block : e.currentTarget;
+    const sel = window.getSelection();
+    if (sel) {
+      const range = document.createRange();
+      range.selectNodeContents(container);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }, []);
+
   const List = React.useMemo(() => {
     const Comp = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
       ({ className, ...props }, ref) => (
@@ -202,7 +221,10 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
       className="h-full"
       components={{ List, Footer }}
       itemContent={(index, message) => (
-        <div className={index === messages.length - 1 ? "animate-fade-up" : ""}>
+        <div
+          className={cn(index === messages.length - 1 && "animate-fade-up")}
+          onMouseDown={handleTripleClickDown}
+        >
           <MessageItem message={message} isLast={index === messages.length - 1} />
         </div>
       )}
