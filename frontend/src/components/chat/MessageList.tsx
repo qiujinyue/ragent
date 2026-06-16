@@ -2,6 +2,7 @@ import * as React from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { MessageItem } from "@/components/chat/MessageItem";
+import { QuestionRail, type QuestionRailItem } from "@/components/chat/QuestionRail";
 import { WelcomeScreen } from "@/components/chat/WelcomeScreen";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types";
@@ -23,6 +24,46 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
   const prevStreamingRef = React.useRef(false);
   const initialTopMostItemIndex = React.useMemo(
     () => ({ index: "LAST" as const, align: "end" as const }),
+    []
+  );
+  const [visibleEnd, setVisibleEnd] = React.useState(0);
+
+  const userQuestions = React.useMemo<QuestionRailItem[]>(() => {
+    const items: QuestionRailItem[] = [];
+    messages.forEach((msg, flatIndex) => {
+      if (msg.role !== "user") return;
+      const text = msg.content.replace(/\s+/g, " ").trim();
+      if (!text) return;
+      items.push({ id: msg.id, flatIndex, text });
+    });
+    return items;
+  }, [messages]);
+
+  const activeQuestionId = React.useMemo(() => {
+    if (userQuestions.length === 0) return null;
+    let last: string | null = userQuestions[0].id;
+    for (const q of userQuestions) {
+      if (q.flatIndex <= visibleEnd) {
+        last = q.id;
+      } else {
+        break;
+      }
+    }
+    return last;
+  }, [userQuestions, visibleEnd]);
+
+  const handleSelectQuestion = React.useCallback((flatIndex: number) => {
+    virtuosoRef.current?.scrollToIndex({
+      index: flatIndex,
+      align: "start",
+      behavior: "smooth"
+    });
+  }, []);
+
+  const handleRangeChanged = React.useCallback(
+    (range: { startIndex: number; endIndex: number }) => {
+      setVisibleEnd(range.endIndex);
+    },
     []
   );
 
@@ -182,7 +223,7 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
       ({ className, ...props }, ref) => (
         <div
           ref={ref}
-          className={cn("mx-auto max-w-[800px] space-y-10 px-6 pt-10 pb-2 md:px-8", className)}
+          className={cn("mx-auto max-w-[840px] space-y-10 px-6 pt-10 pb-2 md:px-8", className)}
           {...props}
         />
       )
@@ -205,29 +246,37 @@ export function MessageList({ messages, isLoading, isStreaming, sessionKey }: Me
   }
 
   return (
-    <Virtuoso
-      key={sessionKey ?? "empty"}
-      ref={virtuosoRef}
-      data={messages}
-      initialTopMostItemIndex={initialTopMostItemIndex}
-      followOutput={(atBottom) => {
-        if (isStreaming) return false;
-        return atBottom ? "auto" : false;
-      }}
-      scrollerRef={(node) => {
-        scrollerRef.current = node as HTMLElement | null;
-      }}
-      totalListHeightChanged={handleTotalListHeightChanged}
-      className="h-full"
-      components={{ List, Footer }}
-      itemContent={(index, message) => (
-        <div
-          className={cn(index === messages.length - 1 && "animate-fade-up")}
-          onMouseDown={handleTripleClickDown}
-        >
-          <MessageItem message={message} isLast={index === messages.length - 1} />
-        </div>
-      )}
-    />
+    <div className="relative h-full">
+      <Virtuoso
+        key={sessionKey ?? "empty"}
+        ref={virtuosoRef}
+        data={messages}
+        initialTopMostItemIndex={initialTopMostItemIndex}
+        followOutput={(atBottom) => {
+          if (isStreaming) return false;
+          return atBottom ? "auto" : false;
+        }}
+        scrollerRef={(node) => {
+          scrollerRef.current = node as HTMLElement | null;
+        }}
+        totalListHeightChanged={handleTotalListHeightChanged}
+        rangeChanged={handleRangeChanged}
+        className="h-full"
+        components={{ List, Footer }}
+        itemContent={(index, message) => (
+          <div
+            className={cn(index === messages.length - 1 && "animate-fade-up")}
+            onMouseDown={handleTripleClickDown}
+          >
+            <MessageItem message={message} isLast={index === messages.length - 1} />
+          </div>
+        )}
+      />
+      <QuestionRail
+        items={userQuestions}
+        activeId={activeQuestionId}
+        onSelect={handleSelectQuestion}
+      />
+    </div>
   );
 }

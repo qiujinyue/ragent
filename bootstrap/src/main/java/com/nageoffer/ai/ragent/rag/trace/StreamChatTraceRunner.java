@@ -19,6 +19,7 @@ package com.nageoffer.ai.ragent.rag.trace;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.nageoffer.ai.ragent.framework.context.UserContext;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceContext;
 import com.nageoffer.ai.ragent.infra.chat.ForwardingStreamCallback;
@@ -78,7 +79,10 @@ public class StreamChatTraceRunner {
                 .userId(UserContext.getUserId())
                 .status(STATUS_RUNNING)
                 .startTime(new Date())
-                .extraData(StrUtil.format("{\"questionLength\":{}}", StrUtil.length(question)))
+                .extraData(JSONUtil.createObj()
+                        .set("questionLength", StrUtil.length(question))
+                        .set("question", question)
+                        .toString())
                 .build());
 
         Date runStartTime = new Date(startMillis);

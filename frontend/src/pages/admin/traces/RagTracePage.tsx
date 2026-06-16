@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Clock3, Layers, RefreshCw, Search, TrendingUp } from "lucide-react";
+import { Activity, Clock3, RefreshCw, Search, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { StatCard, type StatCardTone } from "@/pages/admin/traces/components/Sta
 import {
   PAGE_SIZE,
   normalizeStatus,
-  percentile,
 } from "@/pages/admin/traces/traceUtils";
 
 type DurationMetric = {
@@ -80,13 +79,18 @@ export function RagTracePage() {
     const durations = runs
       .map((item) => Number(item.durationMs ?? 0))
       .filter((value) => Number.isFinite(value) && value > 0);
+    const ttftValues = runs
+      .map((item) => Number(item.ttftMs ?? 0))
+      .filter((value) => Number.isFinite(value) && value > 0);
     const successCount = runs.filter((item) => normalizeStatus(item.status) === "success").length;
     const failedCount = runs.filter((item) => normalizeStatus(item.status) === "failed").length;
     const runningCount = runs.filter((item) => normalizeStatus(item.status) === "running").length;
     const avgDuration = durations.length
       ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
       : 0;
-    const p95Duration = Math.round(percentile(durations, 0.95));
+    const avgTtft = ttftValues.length
+      ? Math.round(ttftValues.reduce((sum, value) => sum + value, 0) / ttftValues.length)
+      : 0;
     const successRate = runs.length ? Math.round((successCount / runs.length) * 1000) / 10 : 0;
     return {
       totalRuns: pageData?.total ?? runs.length,
@@ -94,7 +98,7 @@ export function RagTracePage() {
       failedCount,
       runningCount,
       avgDuration,
-      p95Duration,
+      avgTtft,
       successRate
     };
   }, [runs, pageData?.total]);
@@ -103,7 +107,7 @@ export function RagTracePage() {
   const pages = pageData?.pages || 1;
   const total = pageData?.total || 0;
   const avgDurationMetric = formatDurationMetric(traceStats.avgDuration);
-  const p95DurationMetric = formatDurationMetric(traceStats.p95Duration);
+  const avgTtftMetric = formatDurationMetric(traceStats.avgTtft);
   const statCards: {
     key: string;
     title: string;
@@ -135,12 +139,12 @@ export function RagTracePage() {
       tone: "indigo"
     },
     {
-      key: "p95",
-      title: "P95 耗时",
-      value: p95DurationMetric.value,
-      unit: p95DurationMetric.unit,
-      icon: <Layers className="h-4 w-4" />,
-      tone: "amber"
+      key: "avgTtft",
+      title: "平均首字",
+      value: avgTtftMetric.value,
+      unit: avgTtftMetric.unit,
+      icon: <Clock3 className="h-4 w-4" />,
+      tone: "sky"
     }
   ];
 
@@ -172,17 +176,23 @@ export function RagTracePage() {
           </div>
         </div>
 
-        <section className="trace-list-stat-grid">
-          {statCards.map((stat) => (
-            <StatCard
-              key={stat.key}
-              title={stat.title}
-              value={stat.value}
-              unit={stat.unit}
-              icon={stat.icon}
-              tone={stat.tone}
-            />
-          ))}
+        <section className="trace-list-stat-section">
+          <div className="trace-list-stat-caption">
+            <span className="trace-list-stat-caption-label">当前页统计</span>
+            <span className="trace-list-stat-caption-hint">仅反映本页 {runs.length} 条记录</span>
+          </div>
+          <div className="trace-list-stat-grid">
+            {statCards.map((stat) => (
+              <StatCard
+                key={stat.key}
+                title={stat.title}
+                value={stat.value}
+                unit={stat.unit}
+                icon={stat.icon}
+                tone={stat.tone}
+              />
+            ))}
+          </div>
         </section>
 
         <RunsTable

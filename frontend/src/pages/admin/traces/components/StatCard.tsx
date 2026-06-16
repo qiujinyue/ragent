@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-export type StatCardTone = "cyan" | "emerald" | "indigo" | "amber";
+export type StatCardTone = "cyan" | "emerald" | "indigo" | "amber" | "sky" | "rose";
 
 interface StatCardProps {
   title: string;

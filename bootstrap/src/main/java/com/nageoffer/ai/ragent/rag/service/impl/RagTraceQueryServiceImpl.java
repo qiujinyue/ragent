@@ -18,6 +18,8 @@
 package com.nageoffer.ai.ragent.rag.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -75,7 +77,8 @@ public class RagTraceQueryServiceImpl implements RagTraceQueryService {
                 new Page<>(request.getCurrent(), request.getSize());
         IPage<RagTraceRunDO> pageResult = runMapper.selectPage(page, wrapper);
         Map<String, String> usernameMap = loadUsernameMap(pageResult.getRecords());
-        return pageResult.convert(run -> toRunVO(run, usernameMap));
+        Map<String, Long> ttftMap = loadTtftMap(pageResult.getRecords());
+        return pageResult.convert(run -> toRunVO(run, usernameMap, ttftMap));
     }
 
     @Override
@@ -87,8 +90,9 @@ public class RagTraceQueryServiceImpl implements RagTraceQueryService {
             return null;
         }
         Map<String, String> usernameMap = loadUsernameMap(List.of(run));
+        Map<String, Long> ttftMap = loadTtftMap(List.of(run));
         return RagTraceDetailVO.builder()
-                .run(toRunVO(run, usernameMap))
+                .run(toRunVO(run, usernameMap, ttftMap))
                 .nodes(listNodes(traceId))
                 .build();
     }
@@ -102,8 +106,9 @@ public class RagTraceQueryServiceImpl implements RagTraceQueryService {
         return nodes.stream().map(this::toNodeVO).toList();
     }
 
-    private RagTraceRunVO toRunVO(RagTraceRunDO run, Map<String, String> usernameMap) {
+    private RagTraceRunVO toRunVO(RagTraceRunDO run, Map<String, String> usernameMap, Map<String, Long> ttftMap) {
         String username = resolveUsername(run.getUserId(), usernameMap);
+        String question = parseQuestion(run.getExtraData());
         return RagTraceRunVO.builder()
                 .traceId(run.getTraceId())
                 .traceName(run.getTraceName())
@@ -115,6 +120,8 @@ public class RagTraceQueryServiceImpl implements RagTraceQueryService {
                 .status(run.getStatus())
                 .errorMessage(run.getErrorMessage())
                 .durationMs(run.getDurationMs())
+                .ttftMs(ttftMap.get(run.getTraceId()))
+                .question(question)
                 .startTime(run.getStartTime())
                 .endTime(run.getEndTime())
                 .build();
@@ -145,6 +152,45 @@ public class RagTraceQueryServiceImpl implements RagTraceQueryService {
                 UserDO::getUsername,
                 (left, right) -> left
         ));
+    }
+
+    private Map<String, Long> loadTtftMap(List<RagTraceRunDO> runs) {
+        if (runs == null || runs.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<String> traceIds = runs.stream()
+                .map(RagTraceRunDO::getTraceId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (traceIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<RagTraceNodeDO> ttftNodes = nodeMapper.selectList(
+                Wrappers.lambdaQuery(RagTraceNodeDO.class)
+                        .in(RagTraceNodeDO::getTraceId, traceIds)
+                        .eq(RagTraceNodeDO::getNodeType, "USER_TTFT")
+                        .select(RagTraceNodeDO::getTraceId, RagTraceNodeDO::getDurationMs));
+        if (ttftNodes == null || ttftNodes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return ttftNodes.stream()
+                .filter(node -> node.getTraceId() != null && node.getDurationMs() != null)
+                .collect(Collectors.toMap(
+                        RagTraceNodeDO::getTraceId,
+                        RagTraceNodeDO::getDurationMs,
+                        (left, right) -> left));
+    }
+
+    private String parseQuestion(String extraData) {
+        if (StrUtil.isBlank(extraData)) {
+            return null;
+        }
+        try {
+            JSONObject json = JSONUtil.parseObj(extraData);
+            return json.getStr("question");
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private String resolveUsername(String userId, Map<String, String> usernameMap) {

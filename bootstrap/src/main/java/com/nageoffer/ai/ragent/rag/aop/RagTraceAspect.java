@@ -19,13 +19,10 @@ package com.nageoffer.ai.ragent.rag.aop;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.nageoffer.ai.ragent.framework.context.UserContext;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceContext;
 import com.nageoffer.ai.ragent.framework.trace.RagTraceNode;
-import com.nageoffer.ai.ragent.framework.trace.RagTraceRoot;
 import com.nageoffer.ai.ragent.rag.config.RagTraceProperties;
 import com.nageoffer.ai.ragent.rag.dao.entity.RagTraceNodeDO;
-import com.nageoffer.ai.ragent.rag.dao.entity.RagTraceRunDO;
 import com.nageoffer.ai.ragent.rag.service.RagTraceRecordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,63 +53,6 @@ public class RagTraceAspect {
 
     private final RagTraceRecordService traceRecordService;
     private final RagTraceProperties traceProperties;
-
-    @Around("@annotation(traceRoot)")
-    public Object aroundRoot(ProceedingJoinPoint joinPoint, RagTraceRoot traceRoot) throws Throwable {
-        if (!traceProperties.isEnabled()) {
-            return joinPoint.proceed();
-        }
-
-        String existingTraceId = RagTraceContext.getTraceId();
-        if (StrUtil.isNotBlank(existingTraceId)) {
-            // 当前线程已在链路中，避免重复创建 root
-            return joinPoint.proceed();
-        }
-
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Method method = signature.getMethod();
-        String traceId = IdUtil.getSnowflakeNextIdStr();
-        String conversationId = resolveStringArg(signature, joinPoint.getArgs(), traceRoot.conversationIdArg());
-        String taskId = resolveStringArg(signature, joinPoint.getArgs(), traceRoot.taskIdArg());
-        String traceName = StrUtil.blankToDefault(traceRoot.name(), method.getName());
-        Date startTime = new Date();
-        long startMillis = System.currentTimeMillis();
-
-        traceRecordService.startRun(RagTraceRunDO.builder()
-                .traceId(traceId)
-                .traceName(traceName)
-                .entryMethod(method.getDeclaringClass().getName() + "#" + method.getName())
-                .conversationId(conversationId)
-                .taskId(taskId)
-                .userId(UserContext.getUserId())
-                .status(STATUS_RUNNING)
-                .startTime(startTime)
-                .build());
-
-        RagTraceContext.setTraceId(traceId);
-        try {
-            Object result = joinPoint.proceed();
-            traceRecordService.finishRun(
-                    traceId,
-                    STATUS_SUCCESS,
-                    null,
-                    new Date(),
-                    System.currentTimeMillis() - startMillis
-            );
-            return result;
-        } catch (Throwable ex) {
-            traceRecordService.finishRun(
-                    traceId,
-                    STATUS_ERROR,
-                    truncateError(ex),
-                    new Date(),
-                    System.currentTimeMillis() - startMillis
-            );
-            throw ex;
-        } finally {
-            RagTraceContext.clear();
-        }
-    }
 
     @Around("@annotation(traceNode)")
     public Object aroundNode(ProceedingJoinPoint joinPoint, RagTraceNode traceNode) throws Throwable {
@@ -170,27 +110,6 @@ public class RagTraceAspect {
         } finally {
             RagTraceContext.popNode();
         }
-    }
-
-    private String resolveStringArg(MethodSignature signature, Object[] args, String argName) {
-        if (StrUtil.isBlank(argName) || args == null || args.length == 0) {
-            return null;
-        }
-        String[] parameterNames = signature.getParameterNames();
-        if (parameterNames == null || parameterNames.length != args.length) {
-            return null;
-        }
-        for (int i = 0; i < parameterNames.length; i++) {
-            if (!argName.equals(parameterNames[i])) {
-                continue;
-            }
-            Object arg = args[i];
-            if (arg == null) {
-                return null;
-            }
-            return String.valueOf(arg);
-        }
-        return null;
     }
 
     private String truncateError(Throwable throwable) {

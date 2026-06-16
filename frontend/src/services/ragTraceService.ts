@@ -12,6 +12,8 @@ export interface RagTraceRun {
   status?: string | null;
   errorMessage?: string | null;
   durationMs?: number | null;
+  ttftMs?: number | null;
+  question?: string | null;
   startTime?: string | null;
   endTime?: string | null;
 }

@@ -4,6 +4,9 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkCjkFriendly from "remark-cjk-friendly";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import { Check, Copy, ImageIcon } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -21,7 +24,8 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
 
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[[remarkGfm, { singleTilde: false }], remarkCjkFriendly]}
+      rehypePlugins={[rehypeRaw, rehypeSanitize]}
       components={{
         code({ inline, className, children, node, ...props }) {
           const match = /language-(\w+)/.exec(className || "");
@@ -33,7 +37,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             return (
               <code
                 className={cn(
-                  "rounded px-1.5 py-0.5 text-[13px] font-mono bg-[#f6f8fa] text-[#24292f]",
+                  "mx-0.5 rounded px-1.5 py-0.5 text-[13px] font-mono bg-[#f6f8fa] text-[#24292f]",
                   "dark:bg-[#161b22] dark:text-[#c9d1d9]",
                   className
                 )}
@@ -108,10 +112,47 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </a>
           );
         },
+        h1({ children, ...props }) {
+          return (
+            <h1
+              className="mt-6 mb-4 border-b border-[#d0d7de] pb-2 text-3xl font-bold leading-tight first:mt-0 dark:border-[#30363d]"
+              {...props}
+            >
+              {children}
+            </h1>
+          );
+        },
+        h2({ children, ...props }) {
+          return (
+            <h2
+              className="mt-6 mb-4 border-b border-[#d0d7de] pb-1.5 text-2xl font-bold leading-tight first:mt-0 dark:border-[#30363d]"
+              {...props}
+            >
+              {children}
+            </h2>
+          );
+        },
+        h3({ children, ...props }) {
+          return (
+            <h3 className="mt-5 mb-3 text-xl font-bold leading-snug first:mt-0" {...props}>
+              {children}
+            </h3>
+          );
+        },
+        h4({ children, ...props }) {
+          return (
+            <h4 className="mt-4 mb-2 text-base font-bold leading-snug first:mt-0" {...props}>
+              {children}
+            </h4>
+          );
+        },
         table({ children, ...props }) {
           return (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-[#d0d7de] rounded-md dark:border-[#30363d]" {...props}>
+            <div className="my-6 w-full min-w-0 overflow-x-auto">
+              <table
+                className="w-full border-separate border-spacing-0 overflow-hidden rounded-lg border border-[#d0d7de] text-sm dark:border-[#30363d] [&_tr:last-child>td]:border-b-0"
+                {...props}
+              >
                 {children}
               </table>
             </div>
@@ -119,21 +160,37 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         },
         thead({ children, ...props }) {
           return (
-            <thead className="bg-[#f6f8fa] dark:bg-[#161b22]" {...props}>
+            <thead className="bg-[#eaeef2] dark:bg-[#21262d]" {...props}>
               {children}
             </thead>
           );
         },
+        tr({ children, ...props }) {
+          return (
+            <tr
+              className="transition-colors hover:bg-[#f6f8fa]/60 dark:hover:bg-[#161b22]/60"
+              {...props}
+            >
+              {children}
+            </tr>
+          );
+        },
         th({ children, ...props }) {
           return (
-            <th className="border-b border-[#d0d7de] border-r border-r-[#d0d7de] px-3 py-2 text-left text-sm font-semibold text-[#24292f] last:border-r-0 dark:border-[#30363d] dark:border-r-[#30363d] dark:text-[#c9d1d9]" {...props}>
+            <th
+              className="border-b border-r border-[#d0d7de] px-2 py-2 text-left text-sm font-semibold text-[#24292f] align-middle break-words last:border-r-0 dark:border-[#30363d] dark:text-[#c9d1d9]"
+              {...props}
+            >
               {children}
             </th>
           );
         },
         td({ children, ...props }) {
           return (
-            <td className="border-b border-[#d0d7de] border-r border-r-[#d0d7de] px-3 py-2.5 text-sm text-[#24292f] last:border-r-0 dark:border-[#30363d] dark:border-r-[#30363d] dark:text-[#c9d1d9]" {...props}>
+            <td
+              className="border-b border-r border-[#d0d7de] px-2 py-2 text-sm text-[#24292f] align-middle break-words last:border-r-0 dark:border-[#30363d] dark:text-[#c9d1d9]"
+              {...props}
+            >
               {children}
             </td>
           );
@@ -141,7 +198,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         blockquote({ children, ...props }) {
           return (
             <blockquote
-              className="my-3 border-l-4 border-[#3B82F6] bg-[#F0F7FF] pl-3 pr-3 py-2 italic text-[#333333] dark:border-[#60A5FA] dark:bg-[#1A2332] dark:text-[#CCCCCC]"
+              className="my-5 rounded-r-md border-l-4 border-[#0969da] bg-[#f6f8fa] px-6 py-4 italic text-[#24292f] dark:border-[#58a6ff] dark:bg-[#161b22] dark:text-[#c9d1d9] [&_p:first-of-type]:before:content-none [&_p:last-of-type]:after:content-none"
               {...props}
             >
               {children}
@@ -150,20 +207,29 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         },
         ul({ children, ...props }) {
           return (
-            <ul className="my-2 ml-6 list-disc space-y-1" {...props}>
+            <ul
+              className="my-4 list-disc space-y-2 pl-6 marker:text-[#6e7781] dark:marker:text-[#8b949e] [&_ul]:my-2 [&_ol]:my-2"
+              {...props}
+            >
               {children}
             </ul>
           );
         },
         ol({ children, ...props }) {
           return (
-            <ol className="my-2 ml-6 list-decimal space-y-1" {...props}>
+            <ol
+              className="my-4 list-decimal space-y-2 pl-6 marker:text-[#6e7781] dark:marker:text-[#8b949e] [&_ul]:my-2 [&_ol]:my-2"
+              {...props}
+            >
               {children}
             </ol>
           );
+        },
+        hr({ ...props }) {
+          return <hr className="my-6 border-0 border-t border-[#d0d7de] dark:border-[#30363d]" {...props} />;
         }
       }}
-      className="prose prose-gray max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:text-[#1A1A1A] dark:prose-headings:text-[#EEEEEE] prose-p:text-[#333333] dark:prose-p:text-[#CCCCCC] prose-p:leading-relaxed prose-li:text-[#333333] dark:prose-li:text-[#CCCCCC] prose-strong:text-[#1A1A1A] dark:prose-strong:text-[#EEEEEE]"
+      className="prose prose-gray max-w-none break-words leading-[1.6] dark:prose-invert prose-headings:text-[#1A1A1A] dark:prose-headings:text-[#EEEEEE] prose-p:text-[#333333] dark:prose-p:text-[#CCCCCC] prose-p:leading-relaxed prose-li:text-[#333333] dark:prose-li:text-[#CCCCCC] prose-strong:text-[#1A1A1A] dark:prose-strong:text-[#EEEEEE]"
     >
       {content}
     </ReactMarkdown>

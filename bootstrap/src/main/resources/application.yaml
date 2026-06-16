@@ -56,6 +56,9 @@ rag:
   query-rewrite:
     enabled: true
 
+  rerank:
+    enabled: true
+
   rate-limit:
     global:
       enabled: true
@@ -96,6 +99,7 @@ rag:
         confidence-threshold: 0.6
         top-k-multiplier: 3
       intent-directed:
+        enabled: true
         min-intent-score: 0.4
         top-k-multiplier: 2
 
@@ -137,7 +141,7 @@ ai:
     message-chunk-size: 1
 
   chat:
-    default-model: qwen3-max
+    default-model: qwen-plus
     deep-thinking-model: qwen3-max
     candidates:
       - id: qwen-plus

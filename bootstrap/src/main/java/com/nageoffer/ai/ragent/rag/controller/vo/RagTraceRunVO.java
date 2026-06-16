@@ -49,6 +49,10 @@ public class RagTraceRunVO {
 
     private Long durationMs;
 
+    private Long ttftMs;
+
+    private String question;
+
     private Date startTime;
 
     private Date endTime;
